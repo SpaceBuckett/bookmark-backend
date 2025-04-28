@@ -4,12 +4,32 @@ import (
 	db "github.com/SpaceBuckett/bookmark-backend/db/sqlc"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 type createUserProfileRequest struct {
 	Username       string `json:"username" binding:"required,alphanum"`
 	Email          string `json:"email" binding:"required,email"`
 	HashedPassword string `json:"hashed_password" binding:"required"`
+}
+
+type userResponse struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
+type loginUserResponse struct {
+	AccessToken string       `json:"access_token"`
+	User        userResponse `json:"user"`
+}
+
+func newUserResponse(user db.Userprofile) userResponse {
+	return userResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+	}
 }
 
 func (server *Server) createUserProfile(c *gin.Context) {
@@ -31,7 +51,16 @@ func (server *Server) createUserProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, userAccount)
+	accessToken, err := server.tokenMaker.CreateToken(
+		userAccount.ID,
+		time.Duration(15*time.Minute),
+	)
+
+	rsp := loginUserResponse{
+		AccessToken: accessToken,
+		User:        newUserResponse(userAccount),
+	}
+	c.JSON(http.StatusOK, rsp)
 }
 
 type listUserProfilesRequest struct {

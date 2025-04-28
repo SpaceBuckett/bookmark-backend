@@ -1,18 +1,27 @@
 package api
 
 import (
+	"fmt"
 	db "github.com/SpaceBuckett/bookmark-backend/db/sqlc"
+	"github.com/SpaceBuckett/bookmark-backend/token"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
-	store  *db.Store
-	router *gin.Engine
+	store      *db.Store
+	router     *gin.Engine
+	tokenMaker token.Maker
 }
 
-func NewServer(store *db.Store) *Server {
+func NewServer(store *db.Store) (*Server, error) {
+	tokenMaker, err := token.NewPasetoMaker("12345678901234567890123456789012")
+	if err != nil {
+		return nil, fmt.Errorf("cannot create token %w", err)
+	}
+
 	server := &Server{
-		store: store,
+		store:      store,
+		tokenMaker: tokenMaker,
 	}
 	router := gin.Default()
 
@@ -25,7 +34,7 @@ func NewServer(store *db.Store) *Server {
 	router.GET("/bookmarks/:id", server.getBookmark)
 
 	server.router = router
-	return server
+	return server, nil
 }
 
 func (server *Server) Start(address string) error {
